@@ -1,0 +1,2 @@
+Cppcheck checks non-standard code that contains various compiler
+extensions, inline assembly code, etc.

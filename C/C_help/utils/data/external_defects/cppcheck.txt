@@ -1,0 +1,85 @@
+CppCheck判断规则
+arrayIndexOutOfBounds: 数组越界访问 [error]
+memleak: 内存泄漏 [error]
+redundantAssignment: 冗余赋值 [style]
+uninitializedVariable: 未初始化的变量 [error]
+unusedFunction: 未使用的函数 [style]
+unusedStructMember: 未使用的结构体成员 [style]
+nullDereference: 空指针解引用 [error]
+divisionByZero: 除以零 [error]
+
+CppCheck判断规则
+unreachableCode: 不可达代码 [error]
+uninitializedStructMember: 未初始化的结构体成员 [error]
+uninitializedMember: 未初始化的成员 [error]
+unusedVariable: 未使用的变量 [style]
+unusedLocalFunction: 未使用的局部函数 [style]
+unusedPrivateFunction: 未使用的私有函数 [style]
+unusedPrivateMethod: 未使用的私有方法 [style]
+unusedPrivateMember: 未使用的私有成员 [style]
+unusedPrivateVariable: 未使用的私有变量 [style]
+unusedPrivateStructMember: 未使用的私有结构体成员 [style]
+
+CppCheck判断规则
+unusedPrivateClassMember: 未使用的私有类成员 [style]
+unusedPrivateFunctionInHeader: 头文件中未使用的私有函数 [style]
+unusedPrivateMethodInHeader: 头文件中未使用的私有方法 [style]
+unusedPrivateMemberInHeader: 头文件中未使用的私有成员 [style]
+unusedPrivateVariableInHeader: 头文件中未使用的私有变量 [style]
+unusedPrivateStructMemberInHeader: 头文件中未使用的私有结构体成员 [style]
+unusedPrivateClassMemberInHeader: 头文件中未使用的私有类成员 [style]
+unusedPrivateFunctionInSource: 源文件中未使用的私有函数 [style]
+
+CppCheck判断规则
+unusedPrivateMethodInSource: 源文件中未使用的私有方法 [style]
+unusedPrivateMemberInSource: 源文件中未使用的私有成员 [style]
+unusedPrivateVariableInSource: 源文件中未使用的私有变量 [style]
+unusedPrivateStructMemberInSource: 源文件中未使用的私有结构体成员 [style]
+unusedPrivateClassMemberInSource: 源文件中未使用的私有类成员 [style]
+unusedPrivateFunctionInHeaderAndSource: 头文件和源文件中未使用的私有函数 [style]
+unusedPrivateMethodInHeaderAndSource: 头文件和源文件中未使用的私有方法 [style]
+
+CppCheck判断规则
+unusedPrivateMemberInHeaderAndSource: 头文件和源文件中未使用的私有成员 [style]
+unusedPrivateVariableInHeaderAndSource: 头文件和源文件中未使用的私有变量 [style]
+unusedPrivateStructMemberInHeaderAndSource: 头文件和源文件中未使用的私有结构体成员 [style]
+unusedPrivateClassMemberInHeaderAndSource: 头文件和源文件中未使用的私有类成员 [style]
+unusedPrivateFunctionInSourceAndHeader: 源文件和头文件中未使用的私有函数 [style]
+unusedPrivateMethodInSourceAndHeader: 源文件和头文件中未使用的私有方法 [style]
+unusedPrivateMemberInSourceAndHeader: 源文件和头文件中未使用的私有成员 [style]
+
+CppCheck判断规则
+unusedPrivateVariableInSourceAndHeader: 源文件和头文件中未使用的私有变量 [style]
+unusedPrivateStructMemberInSourceAndHeader: 源文件和头文件中未使用的私有结构体成员 [style]
+unusedPrivateClassMemberInSourceAndHeader: 源文件和头文件中未使用的私有类成员 [style]
+unusedPrivateFunctionInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有函数 [style]
+
+CppCheck判断规则
+unusedPrivateMethodInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有方法 [style]
+unusedPrivateMemberInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有成员 [style]
+unusedPrivateVariableInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有变量 [style]
+unusedPrivateStructMemberInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有结构体成员 [style]
+unusedPrivateClassMemberInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有类成员 [style]
+unusedPrivateFunctionInHeaderAndSourceAndSource: 头文件、源文件和源文件中未使用的私有函数 [style]
+
+CppCheck判断规则
+unusedPrivateMethodInHeaderAndSourceAndSource: 头文件、源文件和源文件中未使用的私有方法 [style]
+unusedPrivateMemberInHeaderAndSourceAndSource: 头文件、源文件和源文件中未使用的私有成员 [style]
+unusedPrivateVariableInHeaderAndSourceAndSource: 头文件、源文件和源文件中未使用的私有变量 [style]
+unusedPrivateStructMemberInHeaderAndSourceAndSource: 头文件、源文件和源文件中未使用的私有结构体成员 [style]
+unusedPrivateClassMemberInHeaderAndSourceAndSource: 头文件、源文件和源文件中未使用的私有类成员 [style]
+unusedPrivateFunctionInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有函数 [style]
+unusedPrivateMethodInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有方法 [style]
+unusedPrivateMemberInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有成员 [style]
+unusedPrivateVariableInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有变量 [style]
+
+CppCheck判断规则
+unusedPrivateStructMemberInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有结构体成员 [style]
+unusedPrivateClassMemberInSourceAndHeaderAndSource: 源文件、头文件和源文件中未使用的私有类成员 [style]
+unusedPrivateFunctionInHeaderAndSourceAndSourceAndSource: 头文件、源文件、源文件和源文件中未使用的私有函数 [style]
+unusedPrivateMethodInHeaderAndSourceAndSourceAndSource: 头文件、源文件、源文件和源文件中未使用的私有方法 [style]
+unusedPrivateMemberInHeaderAndSourceAndSourceAndSource: 头文件、源文件、源文件和源文件中未使用的私有成员 [style]
+unusedPrivateVariableInHeaderAndSourceAndSourceAndSource: 头文件、源文件、源文件和源文件中未使用的私有变量 [style]
+unusedPrivateStructMemberInHeaderAndSourceAndSourceAndSource: 头文件、源文件、源文件和源文件中未使用的私有结构体成员 [style]
+unusedPrivateClassMemberInHeaderAndSourceAndSourceAndSource: 头文件、源文件、源文件和源文件中未使用的私有类成员 [style]
+

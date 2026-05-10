@@ -1,0 +1,932 @@
+Title: What is the &#39;--&gt;&#39; operator in C/C++?
+Link: https://stackoverflow.com/questions/1642028/what-is-the-operator-in-c-c
+Body: After reading Hidden Features and Dark Corners of C++/STL on comp.lang.c++.moderated, I was completely surprised that the following snippet compiled and worked in both Visual Studio 2008 and G++ 4.4. I would assume this is also valid C since it works in GCC as well.
+Here's the code:
+#include <stdio.h>
+int main()
+{
+    int x = 10;
+    while (x --> 0) // x goes to 0
+    {
+        printf("%d ", x);
+    }
+}
+
+Output:
+9 8 7 6 5 4 3 2 1 0
+
+Where is this defined in the standard, and where has it come from?
+
+
+Title: Improve INSERT-per-second performance of SQLite
+Link: https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
+Body: Optimizing SQLite is tricky. Bulk-insert performance of a C application can vary from 85 inserts per second to over 96,000 inserts per second!
+Background: We are using SQLite as part of a desktop application. We have large amounts of configuration data stored in XML files that are parsed and loaded into an SQLite database for further processing when the application is initialized. SQLite is ideal for this situation because it's fast, it requires no specialized configuration, and the database is stored on disk as a single file.
+Rationale: Initially I was disappointed with the performance I was seeing. It turns out that the performance of SQLite can vary significantly (both for bulk-inserts and selects) depending on how the database is configured and how you're using the API. It was not a trivial matter to figure out what all of the options and techniques were, so I thought it was prudent to create this community wiki entry to share the results with Stack Overflow readers in order to save others the trouble of the same investigations.
+The experiment: Rather than simply talking about performance tips in the general sense (i.e. "Use a transaction!"), I thought it was best to write some C code and actually measure the impact of various options. We're going to start with some simple data:
+
+A 28 MiB TSV text file (approximately 865,000 records) of the complete transit schedule for the city of Toronto
+My test machine is a 3.60 GHz P4 running Windows XP.
+The code is compiled with Visual C++ 2005 x32 as "Release" with "Full Optimization" (/Ox) and Favor Fast Code (/Ot).
+I'm using the SQLite "Amalgamation", compiled directly into my test application. The SQLite version I happen to have is a bit older (3.6.7), but I suspect these results will be comparable to the latest release (please leave a comment if you think otherwise).
+
+Let's write some code!
+The code: A simple C program that reads the text file line-by-line, splits the string into values and then inserts the data into an SQLite database. In this "baseline" version of the code, the database is created, but we won't actually insert data:
+/*************************************************************
+    Baseline code to experiment with SQLite performance.
+
+    Input data is a 28 MiB TSV text file of the
+    complete Toronto Transit System schedule/route info
+    from http://www.toronto.ca/open/datasets/ttc-routes/
+
+**************************************************************/
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#include "sqlite3.h"
+
+#define INPUTDATA "C:\\TTC_schedule_scheduleitem_10-27-2009.txt"
+#define DATABASE "c:\\TTC_schedule_scheduleitem_10-27-2009.sqlite"
+#define TABLE "CREATE TABLE IF NOT EXISTS TTC (id INTEGER PRIMARY KEY, Route_ID TEXT, Branch_Code TEXT, Version INTEGER, Stop INTEGER, Vehicle_Index INTEGER, Day Integer, Time TEXT)"
+#define BUFFER_SIZE 256
+
+int main(int argc, char **argv) {
+
+    sqlite3 * db;
+    sqlite3_stmt * stmt;
+    char * sErrMsg = 0;
+    char * tail = 0;
+    int nRetCode;
+    int n = 0;
+
+    clock_t cStartClock;
+
+    FILE * pFile;
+    char sInputBuf [BUFFER_SIZE] = "\0";
+
+    char * sRT = 0;  /* Route */
+    char * sBR = 0;  /* Branch */
+    char * sVR = 0;  /* Version */
+    char * sST = 0;  /* Stop Number */
+    char * sVI = 0;  /* Vehicle */
+    char * sDT = 0;  /* Date */
+    char * sTM = 0;  /* Time */
+
+    char sSQL [BUFFER_SIZE] = "\0";
+
+    /*********************************************/
+    /* Open the Database and create the Schema */
+    sqlite3_open(DATABASE, &db);
+    sqlite3_exec(db, TABLE, NULL, NULL, &sErrMsg);
+
+    /*********************************************/
+    /* Open input file and import into Database*/
+    cStartClock = clock();
+
+    pFile = fopen (INPUTDATA,"r");
+    while (!feof(pFile)) {
+
+        fgets (sInputBuf, BUFFER_SIZE, pFile);
+
+        sRT = strtok (sInputBuf, "\t");     /* Get Route */
+        sBR = strtok (NULL, "\t");            /* Get Branch */
+        sVR = strtok (NULL, "\t");            /* Get Version */
+        sST = strtok (NULL, "\t");            /* Get Stop Number */
+        sVI = strtok (NULL, "\t");            /* Get Vehicle */
+        sDT = strtok (NULL, "\t");            /* Get Date */
+        sTM = strtok (NULL, "\t");            /* Get Time */
+
+        /* ACTUAL INSERT WILL GO HERE */
+
+        n++;
+    }
+    fclose (pFile);
+
+    printf("Imported %d records in %4.2f seconds\n", n, (clock() - cStartClock) / (double)CLOCKS_PER_SEC);
+
+    sqlite3_close(db);
+    return 0;
+}
+
+
+The "control"
+Running the code as-is doesn't actually perform any database operations, but it will give us an idea of how fast the raw C file I/O and string processing operations are.
+
+Imported 864913 records in 0.94 seconds
+
+Great! We can do 920,000 inserts per second, provided we don't actually do any inserts :-)
+
+The "worst-case-scenario"
+We're going to generate the SQL string using the values read from the file and invoke that SQL operation using sqlite3_exec:
+sprintf(sSQL, "INSERT INTO TTC VALUES (NULL, '%s', '%s', '%s', '%s', '%s', '%s', '%s')", sRT, sBR, sVR, sST, sVI, sDT, sTM);
+sqlite3_exec(db, sSQL, NULL, NULL, &sErrMsg);
+
+This is going to be slow because the SQL will be compiled into VDBE code for every insert and every insert will happen in its own transaction. How slow?
+
+Imported 864913 records in 9933.61
+seconds
+
+Yikes! 2 hours and 45 minutes! That's only 85 inserts per second.
+Using a transaction
+By default, SQLite will evaluate every INSERT/UPDATE statement within a unique transaction. If performing a large number of inserts, it's advisable to wrap your operation in a transaction:
+sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &sErrMsg);
+
+pFile = fopen (INPUTDATA,"r");
+while (!feof(pFile)) {
+
+    ...
+
+}
+fclose (pFile);
+
+sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &sErrMsg);
+
+
+Imported 864913 records in 38.03 seconds
+
+That's better. Simply wrapping all of our inserts in a single transaction improved our performance to 23,000 inserts per second.
+Using a prepared statement
+Using a transaction was a huge improvement, but recompiling the SQL statement for every insert doesn't make sense if we using the same SQL over-and-over. Let's use sqlite3_prepare_v2 to compile our SQL statement once and then bind our parameters to that statement using sqlite3_bind_text:
+/* Open input file and import into the database */
+cStartClock = clock();
+
+sprintf(sSQL, "INSERT INTO TTC VALUES (NULL, @RT, @BR, @VR, @ST, @VI, @DT, @TM)");
+sqlite3_prepare_v2(db,  sSQL, BUFFER_SIZE, &stmt, &tail);
+
+sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &sErrMsg);
+
+pFile = fopen (INPUTDATA,"r");
+while (!feof(pFile)) {
+
+    fgets (sInputBuf, BUFFER_SIZE, pFile);
+
+    sRT = strtok (sInputBuf, "\t");   /* Get Route */
+    sBR = strtok (NULL, "\t");        /* Get Branch */
+    sVR = strtok (NULL, "\t");        /* Get Version */
+    sST = strtok (NULL, "\t");        /* Get Stop Number */
+    sVI = strtok (NULL, "\t");        /* Get Vehicle */
+    sDT = strtok (NULL, "\t");        /* Get Date */
+    sTM = strtok (NULL, "\t");        /* Get Time */
+
+    sqlite3_bind_text(stmt, 1, sRT, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, sBR, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, sVR, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, sST, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, sVI, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 6, sDT, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, sTM, -1, SQLITE_TRANSIENT);
+
+    sqlite3_step(stmt);
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    n++;
+}
+fclose (pFile);
+
+sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &sErrMsg);
+
+printf("Imported %d records in %4.2f seconds\n", n, (clock() - cStartClock) / (double)CLOCKS_PER_SEC);
+
+sqlite3_finalize(stmt);
+sqlite3_close(db);
+
+return 0;
+
+
+Imported 864913 records in 16.27 seconds
+
+Nice! There's a little bit more code (don't forget to call sqlite3_clear_bindings and sqlite3_reset), but we've more than doubled our performance to 53,000 inserts per second.
+PRAGMA synchronous = OFF
+By default, SQLite will pause after issuing a OS-level write command. This guarantees that the data is written to the disk. By setting synchronous = OFF, we are instructing SQLite to simply hand-off the data to the OS for writing and then continue. There's a chance that the database file may become corrupted if the computer suffers a catastrophic crash (or power failure) before the data is written to the platter:
+/* Open the database and create the schema */
+sqlite3_open(DATABASE, &db);
+sqlite3_exec(db, TABLE, NULL, NULL, &sErrMsg);
+sqlite3_exec(db, "PRAGMA synchronous = OFF", NULL, NULL, &sErrMsg);
+
+
+Imported 864913 records in 12.41 seconds
+
+The improvements are now smaller, but we're up to 69,600 inserts per second.
+PRAGMA journal_mode = MEMORY
+Consider storing the rollback journal in memory by evaluating PRAGMA journal_mode = MEMORY. Your transaction will be faster, but if you lose power or your program crashes during a transaction you database could be left in a corrupt state with a partially-completed transaction:
+/* Open the database and create the schema */
+sqlite3_open(DATABASE, &db);
+sqlite3_exec(db, TABLE, NULL, NULL, &sErrMsg);
+sqlite3_exec(db, "PRAGMA journal_mode = MEMORY", NULL, NULL, &sErrMsg);
+
+
+Imported 864913 records in 13.50 seconds
+
+A little slower than the previous optimization at 64,000 inserts per second.
+PRAGMA synchronous = OFF and PRAGMA journal_mode = MEMORY
+Let's combine the previous two optimizations. It's a little more risky (in case of a crash), but we're just importing data (not running a bank):
+/* Open the database and create the schema */
+sqlite3_open(DATABASE, &db);
+sqlite3_exec(db, TABLE, NULL, NULL, &sErrMsg);
+sqlite3_exec(db, "PRAGMA synchronous = OFF", NULL, NULL, &sErrMsg);
+sqlite3_exec(db, "PRAGMA journal_mode = MEMORY", NULL, NULL, &sErrMsg);
+
+
+Imported 864913 records in 12.00 seconds
+
+Fantastic! We're able to do 72,000 inserts per second.
+Using an in-memory database
+Just for kicks, let's build upon all of the previous optimizations and redefine the database filename so we're working entirely in RAM:
+#define DATABASE ":memory:"
+
+
+Imported 864913 records in 10.94 seconds
+
+It's not super-practical to store our database in RAM, but it's impressive that we can perform 79,000 inserts per second.
+Refactoring C code
+Although not specifically an SQLite improvement, I don't like the extra char* assignment operations in the while loop. Let's quickly refactor that code to pass the output of strtok() directly into sqlite3_bind_text(), and let the compiler try to speed things up for us:
+pFile = fopen (INPUTDATA,"r");
+while (!feof(pFile)) {
+
+    fgets (sInputBuf, BUFFER_SIZE, pFile);
+
+    sqlite3_bind_text(stmt, 1, strtok (sInputBuf, "\t"), -1, SQLITE_TRANSIENT); /* Get Route */
+    sqlite3_bind_text(stmt, 2, strtok (NULL, "\t"), -1, SQLITE_TRANSIENT);    /* Get Branch */
+    sqlite3_bind_text(stmt, 3, strtok (NULL, "\t"), -1, SQLITE_TRANSIENT);    /* Get Version */
+    sqlite3_bind_text(stmt, 4, strtok (NULL, "\t"), -1, SQLITE_TRANSIENT);    /* Get Stop Number */
+    sqlite3_bind_text(stmt, 5, strtok (NULL, "\t"), -1, SQLITE_TRANSIENT);    /* Get Vehicle */
+    sqlite3_bind_text(stmt, 6, strtok (NULL, "\t"), -1, SQLITE_TRANSIENT);    /* Get Date */
+    sqlite3_bind_text(stmt, 7, strtok (NULL, "\t"), -1, SQLITE_TRANSIENT);    /* Get Time */
+
+    sqlite3_step(stmt);        /* Execute the SQL Statement */
+    sqlite3_clear_bindings(stmt);    /* Clear bindings */
+    sqlite3_reset(stmt);        /* Reset VDBE */
+
+    n++;
+}
+fclose (pFile);
+
+Note: We are back to using a real database file. In-memory databases are fast, but not necessarily practical
+
+Imported 864913 records in 8.94 seconds
+
+A slight refactoring to the string processing code used in our parameter binding has allowed us to perform 96,700 inserts per second. I think it's safe to say that this is plenty fast. As we start to tweak other variables (i.e. page size, index creation, etc.) this will be our benchmark.
+
+Summary (so far)
+I hope you're still with me! The reason we started down this road is that bulk-insert performance varies so wildly with SQLite, and it's not always obvious what changes need to be made to speed-up our operation. Using the same compiler (and compiler options), the same version of SQLite and the same data we've optimized our code and our usage of SQLite to go from a worst-case scenario of 85 inserts per second to over 96,000 inserts per second!
+
+CREATE INDEX then INSERT vs. INSERT then CREATE INDEX
+Before we start measuring the SELECT performance, we know that we'll be creating indices. It's been suggested in one of the answers below that when doing bulk inserts, it is faster to create the index after the data has been inserted (as opposed to creating the index first then inserting the data). Let's try:
+
+Create index, then insert data:
+sqlite3_exec(db, "CREATE  INDEX 'TTC_Stop_Index' ON 'TTC' ('Stop')", NULL, NULL, &sErrMsg);
+sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, &sErrMsg);
+...
+
+
+Imported 864913 records in 18.13 seconds
+
+
+Insert data, then create index:
+...
+sqlite3_exec(db, "END TRANSACTION", NULL, NULL, &sErrMsg);
+sqlite3_exec(db, "CREATE  INDEX 'TTC_Stop_Index' ON 'TTC' ('Stop')", NULL, NULL, &sErrMsg);
+
+
+Imported 864913 records in 13.66 seconds
+
+
+
+As expected, bulk-inserts are slower if one column is indexed, but it does make a difference if the index is created after the data is inserted. Our no-index baseline is 96,000 inserts per second. Creating the index first then inserting data gives us 47,700 inserts per second, whereas inserting the data first then creating the index gives us 63,300 inserts per second.
+
+I'd gladly take suggestions for other scenarios to try... And will be compiling similar data for SELECT queries soon.
+
+
+Title: How to set, clear, and toggle a single bit
+Link: https://stackoverflow.com/questions/47981/how-to-set-clear-and-toggle-a-single-bit
+Body: How can I set, clear, and toggle a bit?
+
+
+Title: What is the difference between #include &lt;filename&gt; and #include &quot;filename&quot;?
+Link: https://stackoverflow.com/questions/21593/what-is-the-difference-between-include-filename-and-include-filename
+Body: What is the difference between using angle brackets and quotes in an include directive?
+
+#include <filename>
+#include "filename"
+
+
+
+Title: Should I cast the result of malloc (in C)?
+Link: https://stackoverflow.com/questions/605845/should-i-cast-the-result-of-malloc-in-c
+Body: In this question, someone suggested in a comment that I should not cast the result of malloc. i.e., I should do this:
+int *sieve = malloc(sizeof(*sieve) * length);
+
+rather than:
+int *sieve = (int *) malloc(sizeof(*sieve) * length);
+
+Why would this be the case?
+
+
+Title: What does the ??!??! operator do in C?
+Link: https://stackoverflow.com/questions/7825055/what-does-the-operator-do-in-c
+Body: I saw a line of C that looked like this:
+!ErrorHasOccured() ??!??! HandleError();
+
+It compiled correctly and seems to run ok. It seems like it's checking if an error has occurred, and if it has, it handles it. But I'm not really sure what it's actually doing or how it's doing it. It does look like the programmer is trying express their feelings about errors.
+I have never seen the ??!??! before in any programming language, and I can't find documentation for it anywhere. (Google doesn't help with search terms like ??!??!). What does it do and how does the code sample work?
+
+
+Title: What is the effect of extern &quot;C&quot; in C++?
+Link: https://stackoverflow.com/questions/1041866/what-is-the-effect-of-extern-c-in-c
+Body: What exactly does putting extern "C" into C++ code do?
+For example:
+extern "C" {
+   void foo();
+}
+
+
+
+Title: What is the difference between const int*, const int * const, and int * const?
+Link: https://stackoverflow.com/questions/1143262/what-is-the-difference-between-const-int-const-int-const-and-int-const
+Body: I always mess up how to use const int *, const int * const, and int * const correctly. Is there a set of rules defining what you can and cannot do?
+I want to know all the do's and all don'ts in terms of assignments, passing to the functions, etc.
+
+
+Title: With arrays, why is it the case that a[5] == 5[a]?
+Link: https://stackoverflow.com/questions/381542/with-arrays-why-is-it-the-case-that-a5-5a
+Body: As Joel points out in Stack Overflow podcast #34, in C Programming Language (aka: K & R), there is mention of this property of arrays in C: a[5] == 5[a]
+Joel says that it's because of pointer arithmetic but I still don't understand. Why does a[5] == 5[a]?
+
+
+Title: What is &#39;:-!!&#39; in C?
+Link: https://stackoverflow.com/questions/9229601/what-is-in-c
+Body: I bumped into this strange macro code in /usr/include/linux/kernel.h:
+/* Force a compilation error if condition is true, but also produce a
+   result (of value 0 and type size_t), so the expression can be used
+   e.g. in a structure initializer (or where-ever else comma expressions
+   aren't permitted). */
+#define BUILD_BUG_ON_ZERO(e) (sizeof(struct { int:-!!(e); }))
+#define BUILD_BUG_ON_NULL(e) ((void *)sizeof(struct { int:-!!(e); }))
+
+What does :-!! do?
+
+Update: In recent times, the macro has been moved to /usr/include/linux/build_bug.h
+
+
+Title: Is &lt; faster than &lt;=?
+Link: https://stackoverflow.com/questions/12135518/is-faster-than
+Body: Is if (a < 901) faster than if (a <= 900)?
+Not exactly as in this simple example, but there are slight performance changes on loop complex code. I suppose this has to do something with generated machine code in case it's even true.
+
+
+Title: Compiling an application for use in highly radioactive environments
+Link: https://stackoverflow.com/questions/36827659/compiling-an-application-for-use-in-highly-radioactive-environments
+Body: We are compiling an embedded C++ application that is deployed in a shielded device in an environment bombarded with ionizing radiation. We are using GCC and cross-compiling for ARM. When deployed, our application generates some erroneous data and crashes more often than we would like. The hardware is designed for this environment, and our application has run on this platform for several years.
+Are there changes we can make to our code, or compile-time improvements that can be made to identify/correct soft errors and memory-corruption caused by single event upsets? Have any other developers had success in reducing the harmful effects of soft errors on a long-running application?
+
+
+Title: How do function pointers in C work?
+Link: https://stackoverflow.com/questions/840501/how-do-function-pointers-in-c-work
+Body: I had some experience lately with function pointers in C.
+So going on with the tradition of answering your own questions, I decided to make a small summary of the very basics, for those who need a quick dive-in to the subject.
+
+
+Title: What does &quot;static&quot; mean in C?
+Link: https://stackoverflow.com/questions/572547/what-does-static-mean-in-c
+Body: I've seen the word static used in different places in C code; is this like a static function/class in C# (where the implementation is shared across objects)?  
+
+
+Title: How do I determine the size of my array in C?
+Link: https://stackoverflow.com/questions/37538/how-do-i-determine-the-size-of-my-array-in-c
+Body: How do I determine the size of my array in C? 
+That is, the number of elements the array can hold?
+
+
+Title: How do I use extern to share variables between source files?
+Link: https://stackoverflow.com/questions/1433204/how-do-i-use-extern-to-share-variables-between-source-files
+Body: I know that global variables in C sometimes have the extern keyword. What is an extern variable? What is the declaration like? What is its scope?
+This is related to sharing variables across source files, but how does that work precisely? Where do I use extern?
+
+
+Title: What is the difference between ++i and i++?
+Link: https://stackoverflow.com/questions/24853/what-is-the-difference-between-i-and-i
+Body: In C, what is the difference between using ++i and i++, and which should be used in the incrementation block of a for loop?
+
+
+Title: How can I initialize all members of an array to the same value?
+Link: https://stackoverflow.com/questions/201101/how-can-i-initialize-all-members-of-an-array-to-the-same-value
+Body: I have a large array in C (not C++ if that makes a difference). I want to initialize all members of the same value.
+I could swear I once knew a simple way to do this. I could use memset() in my case, but isn't there a way to do this that is built right into the C syntax?
+
+
+Title: Why does the C preprocessor interpret the word &quot;linux&quot; as the constant &quot;1&quot;?
+Link: https://stackoverflow.com/questions/19210935/why-does-the-c-preprocessor-interpret-the-word-linux-as-the-constant-1
+Body: Why does the C preprocessor in GCC interpret the word linux (small letters) as the constant 1?
+test.c:
+#include <stdio.h>
+int main(void)
+{       
+    int linux = 5;
+    return 0;
+}
+
+Result of $ gcc -E test.c (stop after the preprocessing stage):
+....
+int main(void)
+{
+    int 1 = 5;
+    return 0;
+}
+
+Which of course yields an error.
+(BTW: There is no #define linux in the stdio.h file.)
+
+
+Title: What is the difference between a definition and a declaration?
+Link: https://stackoverflow.com/questions/1410563/what-is-the-difference-between-a-definition-and-a-declaration
+Body: The meaning of both eludes me.
+
+
+Title: typedef struct vs struct definitions
+Link: https://stackoverflow.com/questions/1675351/typedef-struct-vs-struct-definitions
+Body: I'm a beginner in C programming, but I was wondering what's the difference between using typedef when defining a structure versus not using typedef. It seems to me like there's really no difference, they accomplish the same goal.
+struct myStruct{
+    int one;
+    int two;
+};
+
+vs.
+typedef struct{
+    int one;
+    int two;
+}myStruct;
+
+
+
+Title: What is the strict aliasing rule?
+Link: https://stackoverflow.com/questions/98650/what-is-the-strict-aliasing-rule
+Body: When asking about common undefined behavior in C, people sometimes refer to the strict aliasing rule.
+What are they talking about?
+
+
+Title: Obfuscated C Code Contest 2006. Please explain sykes2.c
+Link: https://stackoverflow.com/questions/15393441/obfuscated-c-code-contest-2006-please-explain-sykes2-c
+Body: How does this C program work?
+main(_){_^448&&main(-~_);putchar(--_%64?32|-~7[__TIME__-_/8%8][">'txiZ^(~z?"-48]>>";;;====~$::199"[_*2&8|_/64]/(_&2?1:8)%8&1:10);}
+
+It compiles as it is (tested on gcc 4.6.3). It prints the time when compiled. On my system:
+    !!  !!!!!!              !!  !!!!!!              !!  !!!!!! 
+    !!  !!  !!              !!      !!              !!  !!  !! 
+    !!  !!  !!              !!      !!              !!  !!  !! 
+    !!  !!!!!!    !!        !!      !!    !!        !!  !!!!!! 
+    !!      !!              !!      !!              !!  !!  !! 
+    !!      !!              !!      !!              !!  !!  !! 
+    !!  !!!!!!              !!      !!              !!  !!!!!!
+
+Source: sykes2 - A clock in one line, sykes2 author hints
+Some hints: No compile warnings per default. Compiled with -Wall, the following warnings are emitted:
+sykes2.c:1:1: warning: return type defaults to ‘int’ [-Wreturn-type]
+sykes2.c: In function ‘main’:
+sykes2.c:1:14: warning: value computed is not used [-Wunused-value]
+sykes2.c:1:1: warning: implicit declaration of function ‘putchar’ [-Wimplicit-function-declaration]
+sykes2.c:1:1: warning: suggest parentheses around arithmetic in operand of ‘|’ [-Wparentheses]
+sykes2.c:1:1: warning: suggest parentheses around arithmetic in operand of ‘|’ [-Wparentheses]
+sykes2.c:1:1: warning: control reaches end of non-void function [-Wreturn-type]
+
+
+
+Title: Difference between malloc and calloc?
+Link: https://stackoverflow.com/questions/1538420/difference-between-malloc-and-calloc
+Body: What is the difference between doing:
+ptr = malloc(MAXELEMS * sizeof(char *));
+
+And:
+ptr = calloc(MAXELEMS, sizeof(char*));
+
+When is it a good idea to use calloc over malloc or vice versa?
+
+
+Title: Unit Testing C Code
+Link: https://stackoverflow.com/questions/65820/unit-testing-c-code
+Body: I worked on an embedded system this summer written in straight C.  It was an existing project that the company I work for had taken over.  I have become quite accustomed to writing unit tests in Java using JUnit but was at a loss as to the best way to write unit tests for existing code (which needed refactoring) as well as new code added to the system.
+Are there any projects out there that make unit testing plain C code as easy as unit testing Java code with JUnit?  Any insight that would apply specifically to embedded development (cross-compiling to arm-linux platform) would be greatly appreciated.
+
+
+Title: Why use apparently meaningless do-while and if-else statements in macros?
+Link: https://stackoverflow.com/questions/154136/why-use-apparently-meaningless-do-while-and-if-else-statements-in-macros
+Body: In many C/C++ macros I'm seeing the code of the macro wrapped in what seems like a meaningless do while loop.  Here are examples.
+#define FOO(X) do { f(X); g(X); } while (0)
+#define FOO(X) if (1) { f(X); g(X); } else
+
+I can't see what the do while is doing.  Why not just write this without it?
+#define FOO(X) f(X); g(X)
+
+
+
+Title: Why are these constructs using pre and post-increment undefined behavior?
+Link: https://stackoverflow.com/questions/949433/why-are-these-constructs-using-pre-and-post-increment-undefined-behavior
+Body: #include <stdio.h>
+
+int main(void)
+{
+   int i = 0;
+   i = i++ + ++i;
+   printf("%d\n", i); // 3
+
+   i = 1;
+   i = (i++);
+   printf("%d\n", i); // 2 Should be 1, no ?
+
+   volatile int u = 0;
+   u = u++ + ++u;
+   printf("%d\n", u); // 1
+
+   u = 1;
+   u = (u++);
+   printf("%d\n", u); // 2 Should also be one, no ?
+
+   register int v = 0;
+   v = v++ + ++v;
+   printf("%d\n", v); // 3 (Should be the same as u ?)
+
+   int w = 0;
+   printf("%d %d\n", ++w, w); // shouldn't this print 1 1
+
+   int x[2] = { 5, 8 }, y = 0;
+   x[y] = y ++;
+   printf("%d %d\n", x[0], x[1]); // shouldn't this print 0 8? or 5 0?
+}
+
+
+
+Title: What is a segmentation fault?
+Link: https://stackoverflow.com/questions/2346806/what-is-a-segmentation-fault
+Body: What is a segmentation fault? Is it different in C and C++? How are segmentation faults and dangling pointers related?
+
+
+Title: Using Boolean values in C
+Link: https://stackoverflow.com/questions/1921539/using-boolean-values-in-c
+Body: C doesn't have any built-in Boolean types. What's the best way to use them in C?
+
+
+Title: makefile:4: *** missing separator. Stop
+Link: https://stackoverflow.com/questions/16931770/makefile4-missing-separator-stop
+Body: This is my makefile:
+all:ll
+
+ll:ll.c   
+  gcc  -c  -Wall -Werror -02 c.c ll.c  -o  ll  $@  $<
+
+clean :
+  \rm -fr ll
+
+When I try to make clean or make make, I get this error:
+:makefile:4: *** missing separator.  Stop.
+
+How can I fix it?
+
+
+Title: Why isn&#39;t sizeof for a struct equal to the sum of sizeof of each member?
+Link: https://stackoverflow.com/questions/119123/why-isnt-sizeof-for-a-struct-equal-to-the-sum-of-sizeof-of-each-member
+Body: Why does the sizeof operator return a size larger for a structure than the total sizes of the structure's members?
+
+
+Title: What should main() return in C and C++?
+Link: https://stackoverflow.com/questions/204476/what-should-main-return-in-c-and-c
+Body: What is the correct (most efficient) way to define the main() function in C and C++ — int main() or void main() — and why? And how about the arguments?
+If int main() then return 1 or return 0?
+
+
+Title: How do you pass a function as a parameter in C?
+Link: https://stackoverflow.com/questions/9410/how-do-you-pass-a-function-as-a-parameter-in-c
+Body: I want to create a function that performs a function passed by parameter on a set of data. How do you pass a function as a parameter in C?
+
+
+Title: What is size_t in C?
+Link: https://stackoverflow.com/questions/2550774/what-is-size-t-in-c
+Body: I am getting confused with size_t in C. I know that it is returned by the sizeof operator. But what exactly is it? Is it a data type?
+Let's say I have a for loop:
+for(i = 0; i < some_size; i++)
+
+Should I use int i; or size_t i;?
+
+
+Title: How can I get the list of files in a directory using C or C++?
+Link: https://stackoverflow.com/questions/612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
+Body: How can I determine the list of files in a directory from inside my C or C++ code?
+I'm not allowed to execute the ls command and parse the results from within my program.
+
+
+Title: How to determine CPU and memory consumption from inside a process
+Link: https://stackoverflow.com/questions/63166/how-to-determine-cpu-and-memory-consumption-from-inside-a-process
+Body: I once had the task of determining the following performance parameters from inside a running application:
+
+Total virtual memory available
+Virtual memory currently used
+Virtual memory currently used by my process
+Total RAM available
+RAM currently used
+RAM currently used by my process
+% CPU currently used
+% CPU currently used by my process
+
+The code had to run on Windows and Linux. Even though this seems to be a standard task, finding the necessary information in the manuals (WIN32 API, GNU docs) as well as on the Internet took me several days, because there's so much incomplete/incorrect/outdated information on this topic to be found out there.
+In order to save others from going through the same trouble, I thought it would be a good idea to collect all the scattered information plus what I found by trial and error here in one place.
+
+
+Title: Why does ENOENT mean &quot;No such file or directory&quot;?
+Link: https://stackoverflow.com/questions/19902828/why-does-enoent-mean-no-such-file-or-directory
+Body: What does the ENT mean in ENOENT?
+Shouldn't the error:
+
+No such file or directory
+
+just be named by ENOFILE?
+Is there any story or reason?
+
+
+Title: How do I detect unsigned integer overflow?
+Link: https://stackoverflow.com/questions/199333/how-do-i-detect-unsigned-integer-overflow
+Body: I was writing a program in C++ to find all solutions of ab = c, where a, b and c together use all the digits 0-9 exactly once. The program looped over values of a and b, and it ran a digit-counting routine each time on a, b and ab to check if the digits condition was satisfied.
+However, spurious solutions can be generated when ab overflows the integer limit. I ended up checking for this using code like:
+unsigned long b, c, c_test;
+...
+c_test=c*b;         // Possible overflow
+if (c_test/b != c) {/* There has been an overflow*/}
+else c=c_test;      // No overflow
+
+Is there a better way of testing for overflow? I know that some chips have an internal flag that is set when overflow occurs, but I've never seen it accessed through C or C++.
+
+Beware that signed int overflow is undefined behaviour in C and C++, and thus you have to detect it without actually causing it. For signed int overflow before addition, see Detecting signed overflow in C/C++.
+
+
+Title: Why are #ifndef and #define used in C++ header files?
+Link: https://stackoverflow.com/questions/1653958/why-are-ifndef-and-define-used-in-c-header-files
+Body: I have been seeing code like this usually in the start of header files:
+#ifndef HEADERFILE_H
+#define HEADERFILE_H
+
+And at the end of the file is
+#endif
+
+What is the purpose of this?
+
+
+Title: Speed comparison with Project Euler: C vs Python vs Erlang vs Haskell
+Link: https://stackoverflow.com/questions/6964392/speed-comparison-with-project-euler-c-vs-python-vs-erlang-vs-haskell
+Body: I have taken Problem #12 from Project Euler as a programming exercise and to compare my (surely not optimal) implementations in C, Python, Erlang and Haskell. In order to get some higher execution times, I search for the first triangle number with more than 1000 divisors instead of 500 as stated in the original problem.
+The result is the following:
+C:
+lorenzo@enzo:~/erlang$ gcc -lm -o euler12.bin euler12.c
+lorenzo@enzo:~/erlang$ time ./euler12.bin
+842161320
+
+real    0m11.074s
+user    0m11.070s
+sys 0m0.000s
+
+Python:
+lorenzo@enzo:~/erlang$ time ./euler12.py 
+842161320
+
+real    1m16.632s
+user    1m16.370s
+sys 0m0.250s
+
+Python with PyPy:
+lorenzo@enzo:~/Downloads/pypy-c-jit-43780-b590cf6de419-linux64/bin$ time ./pypy /home/lorenzo/erlang/euler12.py 
+842161320
+
+real    0m13.082s
+user    0m13.050s
+sys 0m0.020s
+
+Erlang:
+lorenzo@enzo:~/erlang$ erlc euler12.erl 
+lorenzo@enzo:~/erlang$ time erl -s euler12 solve
+Erlang R13B03 (erts-5.7.4) [source] [64-bit] [smp:4:4] [rq:4] [async-threads:0] [hipe] [kernel-poll:false]
+
+Eshell V5.7.4  (abort with ^G)
+1> 842161320
+
+real    0m48.259s
+user    0m48.070s
+sys 0m0.020s
+
+Haskell:
+lorenzo@enzo:~/erlang$ ghc euler12.hs -o euler12.hsx
+[1 of 1] Compiling Main             ( euler12.hs, euler12.o )
+Linking euler12.hsx ...
+lorenzo@enzo:~/erlang$ time ./euler12.hsx 
+842161320
+
+real    2m37.326s
+user    2m37.240s
+sys 0m0.080s
+
+Summary:
+
+C: 100%
+Python: 692% (118% with PyPy)
+Erlang: 436% (135% thanks to RichardC)
+Haskell: 1421%
+
+I suppose that C has a big advantage as it uses long for the calculations and not arbitrary length integers as the other three. Also it doesn't need to load a runtime first (Do the others?).
+Question 1:
+Do Erlang, Python and Haskell lose speed due to using arbitrary length integers or don't they as long as the values are less than MAXINT?
+Question 2:
+Why is Haskell so slow? Is there a compiler flag that turns off the brakes or is it my implementation? (The latter is quite probable as Haskell is a book with seven seals to me.)
+Question 3:
+Can you offer me some hints how to optimize these implementations without changing the way I determine the factors? Optimization in any way: nicer, faster, more "native" to the language.
+EDIT:
+Question 4:
+Do my functional implementations permit LCO (last call optimization, a.k.a tail recursion elimination) and hence avoid adding unnecessary frames onto the call stack?
+I really tried to implement the same algorithm as similar as possible in the four languages, although I have to admit that my Haskell and Erlang knowledge is very limited.
+
+Source codes used:
+#include <stdio.h>
+#include <math.h>
+
+int factorCount (long n)
+{
+    double square = sqrt (n);
+    int isquare = (int) square;
+    int count = isquare == square ? -1 : 0;
+    long candidate;
+    for (candidate = 1; candidate <= isquare; candidate ++)
+        if (0 == n % candidate) count += 2;
+    return count;
+}
+
+int main ()
+{
+    long triangle = 1;
+    int index = 1;
+    while (factorCount (triangle) < 1001)
+    {
+        index ++;
+        triangle += index;
+    }
+    printf ("%ld\n", triangle);
+}
+
+
+#! /usr/bin/env python3.2
+
+import math
+
+def factorCount (n):
+    square = math.sqrt (n)
+    isquare = int (square)
+    count = -1 if isquare == square else 0
+    for candidate in range (1, isquare + 1):
+        if not n % candidate: count += 2
+    return count
+
+triangle = 1
+index = 1
+while factorCount (triangle) < 1001:
+    index += 1
+    triangle += index
+
+print (triangle)
+
+
+-module (euler12).
+-compile (export_all).
+
+factorCount (Number) -> factorCount (Number, math:sqrt (Number), 1, 0).
+
+factorCount (_, Sqrt, Candidate, Count) when Candidate > Sqrt -> Count;
+
+factorCount (_, Sqrt, Candidate, Count) when Candidate == Sqrt -> Count + 1;
+
+factorCount (Number, Sqrt, Candidate, Count) ->
+    case Number rem Candidate of
+        0 -> factorCount (Number, Sqrt, Candidate + 1, Count + 2);
+        _ -> factorCount (Number, Sqrt, Candidate + 1, Count)
+    end.
+
+nextTriangle (Index, Triangle) ->
+    Count = factorCount (Triangle),
+    if
+        Count > 1000 -> Triangle;
+        true -> nextTriangle (Index + 1, Triangle + Index + 1)  
+    end.
+
+solve () ->
+    io:format ("~p~n", [nextTriangle (1, 1) ] ),
+    halt (0).
+
+
+factorCount number = factorCount' number isquare 1 0 - (fromEnum $ square == fromIntegral isquare)
+    where square = sqrt $ fromIntegral number
+          isquare = floor square
+
+factorCount' number sqrt candidate count
+    | fromIntegral candidate > sqrt = count
+    | number `mod` candidate == 0 = factorCount' number sqrt (candidate + 1) (count + 2)
+    | otherwise = factorCount' number sqrt (candidate + 1) count
+
+nextTriangle index triangle
+    | factorCount triangle > 1000 = triangle
+    | otherwise = nextTriangle (index + 1) (triangle + index + 1)
+
+main = print $ nextTriangle 1 1
+
+
+
+Title: What is the printf format specifier for bool?
+Link: https://stackoverflow.com/questions/17307275/what-is-the-printf-format-specifier-for-bool
+Body: Since ANSI C99 there is _Bool or bool via stdbool.h. But is there also a printf format specifier for bool?
+I mean something like in that pseudo code:
+bool x = true;
+printf("%B\n", x);
+
+which would print:
+true
+
+
+
+Title: How to generate a random int in C?
+Link: https://stackoverflow.com/questions/822323/how-to-generate-a-random-int-in-c
+Body: Is there a function to generate a random int number in C?  Or will I have to use a third party library?
+
+
+Title: Can code that is valid in both C and C++ produce different behavior when compiled in each language?
+Link: https://stackoverflow.com/questions/12887700/can-code-that-is-valid-in-both-c-and-c-produce-different-behavior-when-compile
+Body: C and C++ have many differences, and not all valid C code is valid C++ code.
+(By "valid" I mean standard code with defined behavior, i.e. not implementation-specific/undefined/etc.)
+Is there any scenario in which a piece of code valid in both C and C++ would produce different behavior when compiled with a standard compiler in each language?
+To make it a reasonable/useful comparison (I'm trying to learn something practically useful, not to try to find obvious loopholes in the question), let's assume:
+
+Nothing preprocessor-related (which means no hacks with #ifdef __cplusplus, pragmas, etc.)  
+Anything implementation-defined is the same in both languages (e.g. numeric limits, etc.)
+We're comparing reasonably recent versions of each standard (e.g. say, C++98 and C90 or later)
+If the versions matter, then please mention which versions of each produce different behavior.
+
+
+
+Title: Difference between static and shared libraries?
+Link: https://stackoverflow.com/questions/2649334/difference-between-static-and-shared-libraries
+Body: What is the difference between static and shared libraries?
+I use Eclipse and there are several project types including Static Libraries and Shared Libraries? Does one have an advantage over the other?
+
+
+Title: What does &#39;dereferencing&#39; a pointer mean in C/C++?
+Link: https://stackoverflow.com/questions/4955198/what-does-dereferencing-a-pointer-mean-in-c-c
+Body: Please include an example with the explanation.
+
+
+Title: Why does printf not flush after the call unless a newline is in the format string?
+Link: https://stackoverflow.com/questions/1716296/why-does-printf-not-flush-after-the-call-unless-a-newline-is-in-the-format-strin
+Body: Why does printf not flush after the call unless a newline is in the format string? Is this POSIX behavior? How might I have printf immediately flush every time?
+
+
+Title: Divide a number by 3 without using *, /, +, -, % operators
+Link: https://stackoverflow.com/questions/11694546/divide-a-number-by-3-without-using-operators
+Body: How would you divide a number by 3 without using *, /, +, -, %,  operators?
+The number may be signed or unsigned.
+
+
+Title: What is a &quot;static&quot; function in C?
+Link: https://stackoverflow.com/questions/558122/what-is-a-static-function-in-c
+Body: The question was about plain c functions, not c++ static methods, as clarified in comments.
+I understand what a static variable is, but what is a static function?
+And why is it that if I declare a function, let's say void print_matrix, in let's say a.c (WITHOUT a.h) and include "a.c" -  I get "print_matrix@@....) already defined in a.obj", BUT if I declare it as static void print_matrix then it compiles?
+UPDATE Just to clear things up - I know that including .c is bad, as many of you pointed out. I just do it to temporarily clear space in main.c until I have a better idea of how to group all those functions into proper .h and .c files. Just a temporary, quick solution.
+
+
+Title: Why is “while( !feof(file) )” always wrong?
+Link: https://stackoverflow.com/questions/5431941/why-is-while-feoffile-always-wrong
+Body: What is wrong with using feof() to control a read loop?  For example:
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(int argc, char **argv)
+{
+    char *path = "stdin";
+    FILE *fp = argc > 1 ? fopen(path=argv[1], "r") : stdin;
+
+    if( fp == NULL ){
+        perror(path);
+        return EXIT_FAILURE;
+    }
+
+    while( !feof(fp) ){  /* THIS IS WRONG */
+        /* Read and process data from file… */
+    }
+    if( fclose(fp) != 0 ){
+        perror(path);
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+What is wrong with this loop?
+
+
+Title: Undefined, unspecified and implementation-defined behavior
+Link: https://stackoverflow.com/questions/2397984/undefined-unspecified-and-implementation-defined-behavior
+Body: What is undefined behavior (UB) in C and C++?  What about unspecified behavior and implementation-defined behavior?  What is the difference between them?
+
+

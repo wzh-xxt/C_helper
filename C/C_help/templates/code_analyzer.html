@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C语言智能开发助手 - 科技版</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&display=swap">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- 科技感背景 -->
+    <div class="tech-bg"></div>
+    
+    <!-- 顶部导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="bi bi-cpu"></i> C语言智能开发助手
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="bi bi-speedometer2"></i> 用户中心
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/analyzer">
+                            <i class="bi bi-code-slash"></i> 代码分析
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">
+                            <i class="bi bi-box-arrow-right"></i> 退出登录
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid" style="margin-top: 70px;">
+        <div class="row">
+            <!-- 侧边栏 - 科技风 -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <div class="text-center mb-4 fade-in-up">
+                        <h4 class="text-white pulse-glow">
+                            <i class="bi bi-cpu"></i> C语言智能开发助手
+                        </h4>
+                        <div class="system-name-badge mb-2">
+                            <span class="badge bg-primary">
+                                <i class="bi bi-lightning"></i> 智能代码分析系统
+                            </span>
+                        </div>
+                        <div class="api-status-badge">
+                            <span id="api-status" class="badge bg-secondary">
+                                <i class="bi bi-wifi"></i> API状态检查中...
+                            </span>
+                        </div>
+                    </div>
+                    <ul class="nav flex-column slide-in-left">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#defect-detector">
+                                <i class="bi bi-bug"></i> 代码缺陷检测
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#code-explainer">
+                                <i class="bi bi-file-code"></i> 代码功能解释
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#debug-assistant">
+                                <i class="bi bi-wrench"></i> 智能调试与Debug
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- 主内容区 - 科技风 -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <!-- 系统标题栏 -->
+                <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+                    <div class="system-header">
+                        <h1 class="h4 mb-0 pulse-glow">
+                            <i class="bi bi-code-slash"></i> C语言智能开发助手系统
+                        </h1>
+                        <p class="text-muted mb-0 small">基于AI的智能代码分析与调试平台</p>
+                    </div>
+                    <div class="system-info">
+                        <span class="badge bg-light text-dark">
+                            <i class="bi bi-version"></i> v2.0 科技版
+                        </span>
+                    </div>
+                </div>
+                <div class="tab-content mt-4 fade-in-up">
+                    <!-- 代码缺陷检测部分 - 科技风 -->
+                    <div class="tab-pane fade show active" id="defect-detector">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2 class="pulse-glow">
+                                <i class="bi bi-bug"></i> 代码缺陷检测
+                            </h2>
+                        </div>
+                        
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title">输入C代码</h5>
+                                <div class="code-container">
+                                    <div class="line-numbers"></div>
+                                    <textarea id="defect-code" class="form-control code-editor" rows="12" placeholder="请在此输入C代码..."></textarea>
+                                </div>
+                                <div class="file-upload-container mt-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="input-group me-3">
+                                            <label class="input-group-text" for="defect-file-upload">
+                                                <i class="bi bi-upload"></i>
+                                            </label>
+                                            <input type="file" class="form-control" id="defect-file-upload" accept=".c,.cpp,.h">
+                                        </div>
+                                        <button class="btn btn-outline-secondary" onclick="uploadFile('defect')">
+                                            <i class="bi bi-file-earmark-code"></i> 上传文件
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                    <button class="btn btn-primary btn-lg" id="detect-btn" onclick="detectDefects()">
+                                        <i class="bi bi-search"></i> 检测缺陷
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card result-card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5><i class="bi bi-clipboard-data"></i> 检测结果</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="defect-result" class="result-container">
+                                    <div class="text-center text-muted">
+                                        <i class="bi bi-arrow-up-circle fs-3"></i>
+                                        <p>请输入代码并点击"检测缺陷"按钮</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 代码功能解释部分 - 科技风 -->
+                    <div class="tab-pane fade" id="code-explainer">
+                        <h2 class="pulse-glow mb-4">
+                            <i class="bi bi-file-code"></i> 代码功能解释
+                        </h2>
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title">输入C代码</h5>
+                                <div class="code-container">
+                                    <div class="line-numbers"></div>
+                                    <textarea id="explain-code" class="form-control code-editor" rows="10" placeholder="请在此输入C代码..."></textarea>
+                                </div>
+                                <div class="mt-3">
+                                     <label for="explain-query" class="form-label">特定问题 (可选)</label>
+                                     <input type="text" id="explain-query" class="form-control" placeholder="例如：这个函数是做什么用的？">
+                                </div>
+                                 <div class="file-upload-container mt-3">
+                                     <div class="d-flex align-items-center">
+                                         <div class="input-group me-3">
+                                             <label class="input-group-text" for="explain-file-upload"><i class="bi bi-upload"></i></label>
+                                             <input type="file" class="form-control" id="explain-file-upload" accept=".c,.cpp,.h">
+                                         </div>
+                                         <button class="btn btn-outline-secondary" onclick="uploadFile('explain')">
+                                             <i class="bi bi-file-earmark-code"></i> 上传文件
+                                         </button>
+                                     </div>
+                                 </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                    <button class="btn btn-primary btn-lg" id="explain-btn" onclick="explainCode()">
+                                        <i class="bi bi-chat-dots"></i> 获取解释
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card result-card">
+                             <div class="card-header d-flex justify-content-between align-items-center">
+                                 <h5><i class="bi bi-lightbulb"></i> 代码解释</h5>
+                             </div>
+                            <div class="card-body">
+                                <div id="explain-result" class="result-container markdown-body">
+                                    <div class="text-center text-muted">
+                                        <i class="bi bi-arrow-up-circle fs-3"></i>
+                                        <p>请输入代码并点击"获取解释"按钮</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 智能调试与Debug部分 - 科技风 -->
+                    <div class="tab-pane fade" id="debug-assistant">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2 class="pulse-glow">
+                                <i class="bi bi-wrench"></i> 智能调试与Debug
+                            </h2>
+                        </div>
+                        
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title">输入C代码</h5>
+                                <div class="code-container">
+                                    <div class="line-numbers"></div>
+                                    <textarea id="debug-code" class="form-control code-editor" rows="10" placeholder="请在此输入需要调试的C代码..."></textarea>
+                                </div>
+                                <div class="file-upload-container mt-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="input-group me-3">
+                                            <label class="input-group-text" for="debug-file-upload">
+                                                <i class="bi bi-upload"></i>
+                                            </label>
+                                            <input type="file" class="form-control" id="debug-file-upload" accept=".c,.cpp,.h">
+                                        </div>
+                                        <button class="btn btn-outline-secondary" onclick="uploadFile('debug')">
+                                            <i class="bi bi-file-earmark-code"></i> 上传文件
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <label for="error-message" class="form-label">错误信息或问题描述</label>
+                                    <textarea id="error-message" class="form-control" rows="3" placeholder="例如：Segmentation fault 或 程序运行时崩溃在第10行..."></textarea>
+                                </div>
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                    <button class="btn btn-primary btn-lg" id="debug-btn" onclick="debugCode()">
+                                        <i class="bi bi-tools"></i> 获取调试建议
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card result-card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5><i class="bi bi-bandaid"></i> 调试建议</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="debug-result" class="result-container markdown-body">
+                                    <div class="text-center text-muted">
+                                        <i class="bi bi-arrow-up-circle fs-3"></i>
+                                        <p>请输入代码和错误信息，然后点击"获取调试建议"按钮</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay - 科技风 -->
+    <div id="loading-overlay" class="d-none">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">AI分析中...</span>
+        </div>
+        <p class="text-primary mt-3">AI智能分析中，请稍候...</p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/c.min.js"></script>
+    <script src="/static/js/script.js"></script>
+    
+    <!-- 科技风初始化脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加加载动画
+            setTimeout(() => {
+                document.querySelectorAll('.fade-in-up').forEach((el, index) => {
+                    setTimeout(() => {
+                        el.style.opacity = '1';
+                        el.style.transform = 'translateY(0)';
+                    }, index * 200);
+                });
+            }, 100);
+            
+            // 添加脉冲效果到重要元素
+            const importantElements = document.querySelectorAll('.pulse-glow');
+            importantElements.forEach(el => {
+                el.style.animationDelay = Math.random() * 2 + 's';
+            });
+        });
+    </script>
+    
+    <script>
+        // 退出登录
+        async function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                try {
+                    const response = await fetch('/api/logout', {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        window.location.href = '/';
+                    } else {
+                        alert('退出登录失败');
+                    }
+                } catch (error) {
+                    console.error('退出登录失败:', error);
+                    alert('网络错误');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

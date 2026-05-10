@@ -1,0 +1,192 @@
+core.BitwiseShift (C, C++)
+core.CallAndMessage (C, C++, ObjC)
+ Check for logical errors for function calls and Objective-C message expressions (e.g., uninitialized arguments, null function pointers).
+core.DivideZero (C, C++, ObjC)
+ Check for division by zero.
+core.FixedAddressDereference (C, C++, ObjC)
+Check for dereferences of fixed addresses.
+core.NonNullParamChecker (C, C++, ObjC)
+Check for null pointers passed as arguments to a function whose arguments are references or marked with the 'nonnull' attribute.
+core.NullDereference (C, C++, ObjC)
+Check for dereferences of null pointers.
+core.NullPointerArithm (C, C++)
+Check for undefined arithmetic operations with null pointers.
+core.StackAddressEscape (C)
+Check that addresses to stack memory do not escape the function.
+core.UndefinedBinaryOperatorResult (C)
+Check for undefined results of binary operators.
+core.VLASize (C)
+Check for declarations of Variable Length Arrays (VLA) of undefined, zero or negative
+core.uninitialized.ArraySubscript (C)
+Check for uninitialized values used as array subscripts.
+core.uninitialized.Assign (C)
+Check for assigning uninitialized values.
+core.uninitialized.Branch (C)
+Check for uninitialized values used as branch conditions.
+core.uninitialized.CapturedBlockVariable (C)
+Check for blocks that capture uninitialized values.
+core.uninitialized.UndefReturn (C)
+Check for uninitialized values being returned to the caller.
+core.uninitialized.NewArraySize (C++)
+Check if the element count in new[] is garbage or undefined.
+cplusplus.ArrayDelete (C++)
+cplusplus.InnerPointer (C++)
+Check for inner pointers of C++ containers used after re/deallocation.
+cplusplus.Move (C++)
+cplusplus.NewDelete (C++)
+Check for double-free and use-after-free problems. Traces memory managed by new/delete.
+cplusplus.NewDeleteLeaks (C++)
+Check for memory leaks. Traces memory managed by new/delete.
+cplusplus.PlacementNew (C++)
+Check if default placement new is provided with pointers to sufficient storage capacity.
+cplusplus.SelfAssignment (C++)
+Checks C++ copy and move assignment operators for self assignment.
+cplusplus.StringChecker (C++)
+Checks std::string operations.
+Checks if the cstring pointer from which the ``std::string`` object is
+cplusplus.PureVirtualCall (C++)
+deadcode.DeadStores (C)
+Check for values stored to variables that are never read afterwards.
+Checkers (mostly Objective C) that warn for null pointer passing and dereferencing errors.
+Checkers for portability, performance, optional security and coding style specific rules.
+optin.core.EnumCastOutOfRange (C, C++)
+Check for integer to enumeration casts that would produce a value with no
+optin.cplusplus.UninitializedObject (C++)
+optin.cplusplus.VirtualCall (C++)
+optin.mpi.MPI-Checker (C)
+Checks MPI code.
+optin.osx.cocoa.localizability.EmptyLocalizationContextChecker (ObjC)
+Check that NSLocalizedString macros include a comment for context.
+optin.osx.cocoa.localizability.NonLocalizedStringChecker (ObjC)
+optin.performance.GCDAntipattern
+Check for performance anti-patterns when using Grand Central Dispatch.
+optin.performance.Padding (C, C++, ObjC)
+Check for excessively padded structs.
+optin.portability.UnixAPI
+optin.taint
+Checkers implementing
+optin.taint.GenericTaint (C, C++)
+optin.taint.TaintedAlloc (C, C++)
+optin.taint.TaintedDiv (C, C++, ObjC)
+security.ArrayBound (C, C++)
+security.cert.env.InvalidPtr
+security.FloatLoopCounter (C)
+security.insecureAPI.UncheckedReturn (C)
+security.insecureAPI.bcmp (C)
+security.insecureAPI.bcopy (C)
+security.insecureAPI.bzero (C)
+security.insecureAPI.getpw (C)
+security.insecureAPI.gets (C)
+security.insecureAPI.mkstemp (C)
+security.insecureAPI.mktemp (C)
+security.insecureAPI.rand (C)
+security.insecureAPI.strcpy (C)
+security.insecureAPI.vfork (C)
+security.insecureAPI.DeprecatedOrUnsafeBufferHandling (C)
+security.MmapWriteExec (C)
+security.PointerSub (C)
+Check for pointer subtractions on two pointers pointing to different memory
+security.PutenvStackArray (C)
+security.SetgidSetuidOrder (C)
+security.VAList (C, C++)
+unix.API (C)
+Check calls to various UNIX/Posix functions: ``open, pthread_once, calloc, malloc, realloc, alloca``.
+unix.BlockInCriticalSection (C, C++)
+Check for calls to blocking functions inside a critical section.
+unix.Chroot (C)
+Check improper use of chroot described by SEI Cert C recommendation `POS05-C.
+unix.Errno (C)
+Check for improper use of ``errno``.
+unix.Malloc (C)
+Check for memory leaks, double free, and use-after-free problems. Traces memory managed by malloc()/free().
+unix.MallocSizeof (C)
+Check for dubious ``malloc`` arguments involving ``sizeof``.
+unix.MismatchedDeallocator (C, C++)
+Check for mismatched deallocators.
+unix.Vfork (C)
+Check for proper usage of ``vfork``.
+unix.cstring.BadSizeArg (C)
+Check the size argument passed into C string functions for common erroneous patterns. Use ``-Wno-strncat-size`` compiler option to mute other ``strncat``-related compiler warnings.
+unix.cstring.NotNullTerminated (C)
+Check for arguments which are not null-terminated strings;
+unix.cstring.NullArg (C)
+Check for null pointers being passed as arguments to C string functions:
+unix.StdCLibraryFunctions (C)
+Check for calls of standard library functions that violate predefined argument
+unix.Stream (C)
+Check C stream handling functions:
+osx.API (C)
+Check for proper uses of various Apple APIs.
+osx.NumberObjectConversion (C, C++, ObjC)
+Check for erroneous conversions of objects representing numbers into numbers.
+osx.ObjCProperty (ObjC)
+Check for proper uses of Objective-C properties.
+osx.SecKeychainAPI (C)
+Check for proper uses of Secure Keychain APIs.
+osx.cocoa.AtSync (ObjC)
+Check for nil pointers used as mutexes for @synchronized.
+osx.cocoa.AutoreleaseWrite
+osx.cocoa.ClassRelease (ObjC)
+Check for sending 'retain', 'release', or 'autorelease' directly to a Class.
+osx.cocoa.Dealloc (ObjC)
+osx.cocoa.IncompatibleMethodTypes (ObjC)
+osx.cocoa.Loops
+osx.cocoa.MissingSuperCall (ObjC)
+osx.cocoa.NSAutoreleasePool (ObjC)
+osx.cocoa.NSError (ObjC)
+Check usage of NSError parameters.
+osx.cocoa.NilArg (ObjC)
+Check for prohibited nil arguments to ObjC method calls.
+osx.cocoa.NonNilReturnValue
+osx.cocoa.ObjCGenerics (ObjC)
+Check for type errors when using Objective-C generics.
+osx.cocoa.RetainCount (ObjC)
+Check for leaks and improper reference count management
+osx.cocoa.RunLoopAutoreleaseLeak
+Check for leaked memory in autorelease pools that will never be drained.
+osx.cocoa.SelfInit (ObjC)
+Check that 'self' is properly initialized inside an initializer method.
+osx.cocoa.SuperDealloc (ObjC)
+osx.cocoa.UnusedIvars (ObjC)
+osx.cocoa.VariadicMethodTypes (ObjC)
+Check for passing non-Objective-C types to variadic collection
+osx.coreFoundation.CFError (C)
+Check usage of CFErrorRef* parameters
+osx.coreFoundation.CFNumber (C)
+Check for proper uses of CFNumber APIs.
+osx.coreFoundation.CFRetainRelease (C)
+Check for null arguments to CFRetain/CFRelease/CFMakeCollectable.
+osx.coreFoundation.containers.OutOfBounds (C)
+Checks for index out-of-bounds when using 'CFArray' API.
+osx.coreFoundation.containers.PointerSizedValues (C)
+Checkers are formulated in terms related to ref-counting:
+Check for cast from non-struct pointer to struct pointer.
+Check for cases where the dynamic and the static type of an object are unrelated.
+Check for assignment of a fixed address to a pointer.
+Check for pointer arithmetic on locations other than array elements.
+Check that addresses to stack memory do not escape the function that involves dispatch_after or dispatch_async.
+Check if a value of active type is retrieved from an ``std::variant`` instance with ``std::get``.
+Check for division by variable that is later compared against 0.
+Check for writes to immutable memory regions. This implements part of SEI CERT Rule ENV30-C.
+Check for use of invalidated iterators.
+Check for iterators used outside their valid ranges.
+Check for use of iterators of different containers where iterators of the same container are expected.
+Check for dereference of null smart pointers.
+Check unreachable code.
+Check code for LLVM codebase conventions:
+Check for direct assignments to instance variables.
+Check for direct assignments to instance variables in
+Check that the invalidatable instance variables are
+Check that the invalidation methods are present in classes that contain invalidatable instance variables.
+Check for an out-of-bound pointer being returned to callers.
+Check for misuses of stream APIs. Check for misuses of stream APIs: ``fopen, fclose``
+Checks for overlap in two buffer arguments. Applies to:  ``memcpy, mempcpy, wmemcpy, wmempcpy``.
+Check for out-of-bounds access in string functions, such as:
+Check for uninitialized reads from common memory copy/manipulation functions such as:
+Check for local variables, member variables, and function arguments that are forward declared.
+Check for all casts from a base type to its derived type as these might be memory-unsafe.
+   CheckableObj* ptr; // warn
+   CheckableObj& ptr; // warn
+      CheckedPtr<RefCountable> counted;
+Checkers used for debugging the analyzer.
+Check the analyzer's understanding of expressions.
